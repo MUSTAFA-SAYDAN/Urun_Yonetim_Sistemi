@@ -24,7 +24,7 @@ def token_gerekli(f):
         if not token:
             return jsonify({"hata": "Token gerekli!!!"}), 401
         try:
-            token = token.replace("Bearer ", "")  # Boşlukla birlikte temizle
+            token = token.replace("Bearer ", "") 
             data = jwt.decode(token, app.config["SECRET_KEY"], algorithms=["HS256"])
             kullanici_id = data["kullanici_id"]
         except jwt.ExpiredSignatureError:
@@ -42,6 +42,9 @@ def kayit():
     kullanici_adi = data.get("kullanici_adi")
     sifre = data.get("sifre")
 
+    if not kullanici_adi or not sifre:
+        return jsonify({"hata": "Kullanıcı adı ve şifre zorunludur"}), 400
+
     if Kullanici.query.filter_by(kullanici_adi=kullanici_adi).first():
         return jsonify({"hata": "Bu kullanıcı adı zaten alınmış"}), 400
 
@@ -58,6 +61,10 @@ def giris():
     data = request.json
     kullanici_adi = data.get("kullanici_adi")
     sifre = data.get("sifre")
+
+    if not kullanici_adi or not sifre:
+        return jsonify({"hata": "Kullanıcı adı ve şifre zorunludur"}), 400
+
 
     kullanici = Kullanici.query.filter_by(kullanici_adi=kullanici_adi).first()
     if not kullanici or not kullanici.sifre_kontrol(sifre):
