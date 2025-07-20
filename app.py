@@ -142,6 +142,5 @@ def urun_sil(kullanici_id, id):
 
     return jsonify({"mesaj": "Ürün silindi"})
 
-
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
