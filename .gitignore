@@ -1,0 +1,9 @@
+# Sanal ortam klasörü
+venv/
+
+# Derlenmiş Python dosyaları
+__pycache__/
+*.pyc
+
+# Ortam değişken dosyası (varsa)
+.env
