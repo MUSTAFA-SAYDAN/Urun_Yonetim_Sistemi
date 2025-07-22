@@ -1,84 +1,77 @@
-from flask import Blueprint, request, jsonify, current_app
-from models import Urun
+from flask import Blueprint, request, jsonify
 from extensions import db
-from functools import wraps
-import jwt
+from models import Urun
 
 urun_bp = Blueprint("urunler", __name__)
 
-def token_gerekli(f):
-    @wraps(f)
-    def sarici(*args, **kwargs):
-        token = request.headers.get("Authorization")
-        if not token:
-            return jsonify({"hata": "Token gerekli"}), 401
-        try:
-            token = token.replace("Bearer ", "")
-            data = jwt.decode(token, current_app.config["SECRET_KEY"], algorithms=["HS256"])
-            kullanici_id = data["kullanici_id"]
-        except jwt.ExpiredSignatureError:
-            return jsonify({"hata": "Token süresi dolmuş"}), 401
-        except jwt.InvalidTokenError:
-            return jsonify({"hata": "Geçersiz token"}), 401
-        return f(kullanici_id, *args, **kwargs)
-    return sarici
+
+def eksik_alan_kontrol(veri, gerekli_alanlar):
+    for alan in gerekli_alanlar:
+        if not veri.get(alan):
+            return alan
+    return None
 
 
 @urun_bp.route("/", methods=["POST"])
-@token_gerekli
-def urun_ekle(kullanici_id):
-    data = request.get_json()
-    isim = data.get("isim")
-    fiyat = data.get("fiyat")
-    stok = data.get("stok_miktari")
+def urun_ekle():
+    try:
+        veri = request.get_json()
+        eksik = eksik_alan_kontrol(veri, ["ad", "fiyat"])
+        if eksik:
+            return jsonify({"hata": f"{eksik} alanı eksik"}), 400
 
-    if not isim or fiyat is None or stok is None:
-        return jsonify({"hata": "Eksik bilgi"}), 400
+        yeni_urun = Urun(ad=veri["ad"], fiyat=veri["fiyat"])
+        db.session.add(yeni_urun)
+        db.session.commit()
 
-    urun = Urun(isim=isim, fiyat=fiyat, stok_miktari=stok, kullanici_id=kullanici_id)
-    db.session.add(urun)
-    db.session.commit()
+        return jsonify({"mesaj": "Ürün eklendi"}), 201
 
-    return jsonify({"mesaj": "Ürün eklendi"}), 201
+    except Exception as hata:
+        return jsonify({"hata": str(hata)}), 500
 
 
 @urun_bp.route("/", methods=["GET"])
-def urunleri_getir():
+def urunleri_listele():
     urunler = Urun.query.all()
-    return jsonify({"urunler": [u.to_dict() for u in urunler]})
+    sonuc = [{"id": u.id, "ad": u.ad, "fiyat": u.fiyat} for u in urunler]
+    return jsonify(sonuc), 200
 
 
-@urun_bp.route("/<int:id>", methods=["GET"])
-def urunu_getir(id):
-    urun = Urun.query.get(id)
-    if not urun:
-        return jsonify({"hata": "Ürün bulunamadı"}), 404
-    return jsonify(urun.to_dict())
+@urun_bp.route("/<int:urun_id>", methods=["GET"])
+def urun_getir(urun_id):
+    try:
+        urun = Urun.query.get_or_404(urun_id)
+        sonuc = {"id": urun.id, "ad": urun.ad, "fiyat": urun.fiyat}
+        return jsonify(sonuc), 200
+
+    except Exception as hata:
+        return jsonify({"hata": str(hata)}), 500
 
 
-@urun_bp.route("/<int:id>", methods=["PUT"])
-@token_gerekli
-def urun_guncelle(kullanici_id, id):
-    urun = Urun.query.filter_by(id=id, kullanici_id=kullanici_id).first()
-    if not urun:
-        return jsonify({"hata": "Ürün bulunamadı"}), 404
 
-    data = request.get_json()
-    urun.isim = data.get("isim", urun.isim)
-    urun.fiyat = data.get("fiyat", urun.fiyat)
-    urun.stok_miktari = data.get("stok_miktari", urun.stok_miktari)
+@urun_bp.route("/<int:urun_id>", methods=["PUT"])
+def urun_guncelle(urun_id):
+    try:
+        veri = request.get_json()
+        urun = Urun.query.get_or_404(urun_id)
 
-    db.session.commit()
-    return jsonify({"mesaj": "Ürün güncellendi", "urun": urun.to_dict()})
+        urun.ad = veri.get("ad", urun.ad)
+        urun.fiyat = veri.get("fiyat", urun.fiyat)
+
+        db.session.commit()
+        return jsonify({"mesaj": "Ürün güncellendi"}), 200
+
+    except Exception as hata:
+        return jsonify({"hata": str(hata)}), 500
 
 
-@urun_bp.route("/<int:id>", methods=["DELETE"])
-@token_gerekli
-def urun_sil(kullanici_id, id):
-    urun = Urun.query.filter_by(id=id, kullanici_id=kullanici_id).first()
-    if not urun:
-        return jsonify({"hata": "Ürün bulunamadı"}), 404
+@urun_bp.route("/<int:urun_id>", methods=["DELETE"])
+def urun_sil(urun_id):
+    try:
+        urun = Urun.query.get_or_404(urun_id)
+        db.session.delete(urun)
+        db.session.commit()
+        return jsonify({"mesaj": "Ürün silindi"}), 200
 
-    db.session.delete(urun)
-    db.session.commit()
-    return jsonify({"mesaj": "Ürün silindi"})
+    except Exception as hata:
+        return jsonify({"hata": str(hata)}), 500
