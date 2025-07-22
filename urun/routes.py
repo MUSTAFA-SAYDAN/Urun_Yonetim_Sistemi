@@ -4,6 +4,7 @@ from flask import Blueprint, request, jsonify
 from urun.services import urun_ekle, urun_getir, urun_guncelle, urun_sil
 from urun.validators import eksik_alan_kontrol, tip_kontrol
 from decorators import token_dogrula
+from models import Urun
 
 urun_bp = Blueprint("urunler", __name__)
 
