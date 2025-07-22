@@ -1,68 +1,43 @@
+# auth/routes.py
+
 from flask import Blueprint, request, jsonify, current_app
-from extensions import db, bcrypt
-from models import Kullanici
+from auth.services import kullanici_kaydet, kullanici_dogrula
+from auth.validators import eksik_alan_kontrol  # Bunu daha sonra oluşturacağız
 import jwt
 import datetime
 
 auth_bp = Blueprint("auth", __name__)
 
 
-def eksik_alan_kontrol(veri, gerekli_alanlar):
-    for alan in gerekli_alanlar:
-        if not veri.get(alan):
-            return alan
-    return None
-
-
 @auth_bp.route("/kayit", methods=["POST"])
 def kayit():
-    try:
-        veri = request.get_json()
-        eksik = eksik_alan_kontrol(veri, ["kullanici_adi", "sifre"])
-        if eksik:
-            return jsonify({"hata": f"{eksik} alanı eksik"}), 400
+    veri = request.get_json()
+    eksik = eksik_alan_kontrol(veri, ["kullanici_adi", "sifre"])
+    if eksik:
+        return jsonify({"hata": f"{eksik} alanı eksik"}), 400
 
-        kullanici_adi = veri["kullanici_adi"]
-        sifre = veri["sifre"]
+    if kullanici_dogrula(veri["kullanici_adi"], veri["sifre"]) is not None:
+        return jsonify({"hata": "Bu kullanıcı zaten kayıtlı"}), 400
 
-        if Kullanici.query.filter_by(kullanici_adi=kullanici_adi).first():
-            return jsonify({"hata": "Bu kullanıcı adı zaten kullanılıyor"}), 400
+    kullanici_kaydet(veri["kullanici_adi"], veri["sifre"])
 
-        sifre_hash = bcrypt.generate_password_hash(sifre).decode("utf-8")
-        yeni_kullanici = Kullanici(
-            kullanici_adi=kullanici_adi,
-            sifre_hash=sifre_hash
-        )
-        db.session.add(yeni_kullanici)
-        db.session.commit()
-
-        return jsonify({"mesaj": "Kayıt başarılı"}), 201
-
-    except Exception as hata:
-        return jsonify({"hata": str(hata)}), 500
+    return jsonify({"mesaj": "Kayıt başarılı"}), 201
 
 
 @auth_bp.route("/giris", methods=["POST"])
 def giris():
-    try:
-        veri = request.get_json()
-        eksik = eksik_alan_kontrol(veri, ["kullanici_adi", "sifre"])
-        if eksik:
-            return jsonify({"hata": f"{eksik} alanı eksik"}), 400
+    veri = request.get_json()
+    eksik = eksik_alan_kontrol(veri, ["kullanici_adi", "sifre"])
+    if eksik:
+        return jsonify({"hata": f"{eksik} alanı eksik"}), 400
 
-        kullanici_adi = veri["kullanici_adi"]
-        sifre = veri["sifre"]
+    kullanici = kullanici_dogrula(veri["kullanici_adi"], veri["sifre"])
+    if not kullanici:
+        return jsonify({"hata": "Kullanıcı adı veya şifre yanlış"}), 401
 
-        kullanici = Kullanici.query.filter_by(kullanici_adi=kullanici_adi).first()
-        if not kullanici or not kullanici.sifre_kontrol(sifre):
-            return jsonify({"hata": "Kullanıcı adı veya şifre yanlış"}), 401
+    token = jwt.encode({
+        "kullanici_id": kullanici.id,
+        "son_kullanma": datetime.datetime.utcnow() + datetime.timedelta(hours=3)
+    }, current_app.config["SECRET_KEY"], algorithm="HS256")
 
-        token = jwt.encode({
-            "kullanici_id": kullanici.id,
-            "son_kullanma": datetime.datetime.utcnow() + datetime.timedelta(hours=3)
-        }, current_app.config["SECRET_KEY"], algorithm="HS256")
-
-        return jsonify({"token": token}), 200
-
-    except Exception as hata:
-        return jsonify({"hata": str(hata)}), 500
+    return jsonify({"token": token}), 200

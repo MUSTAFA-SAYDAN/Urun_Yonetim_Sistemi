@@ -12,7 +12,7 @@ class Kullanici(db.Model):
 class Urun(db.Model):
     __tablename__ = "urunler"
     id = db.Column(db.Integer, primary_key=True)
-    isim = db.Column(db.String(100), nullable=False)
+    ad = db.Column(db.String(100), nullable=False)
     fiyat = db.Column(db.Integer, nullable=False)
     stok_miktari = db.Column(db.Integer, nullable=False)
     kullanici_id = db.Column(db.Integer, db.ForeignKey("kullanicilar.id"), nullable=False)
@@ -20,7 +20,7 @@ class Urun(db.Model):
     def to_dict(self):
         return {
             "id": self.id,
-            "isim": self.isim,
+            "ad": self.ad,
             "fiyat": self.fiyat,
             "stok_miktari": self.stok_miktari,
             "kullanici_id": self.kullanici_id,

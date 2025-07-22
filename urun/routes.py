@@ -1,77 +1,53 @@
+# urun/routes.py
+
 from flask import Blueprint, request, jsonify
-from extensions import db
-from models import Urun
+from urun.services import urun_ekle, urun_getir, urun_guncelle, urun_sil
+from urun.validators import eksik_alan_kontrol, tip_kontrol
+from decorators import token_dogrula
 
 urun_bp = Blueprint("urunler", __name__)
 
-
-def eksik_alan_kontrol(veri, gerekli_alanlar):
-    for alan in gerekli_alanlar:
-        if not veri.get(alan):
-            return alan
-    return None
-
-
 @urun_bp.route("/", methods=["POST"])
-def urun_ekle():
-    try:
-        veri = request.get_json()
-        eksik = eksik_alan_kontrol(veri, ["ad", "fiyat"])
-        if eksik:
-            return jsonify({"hata": f"{eksik} alanı eksik"}), 400
+@token_dogrula
+def urun_ekle_route():
+    veri = request.get_json()
+    eksik = eksik_alan_kontrol(veri, ["ad", "fiyat", "stok_miktari"])
+    if eksik:
+        return jsonify({"hata": f"{eksik} alanı eksik"}), 400
 
-        yeni_urun = Urun(ad=veri["ad"], fiyat=veri["fiyat"])
-        db.session.add(yeni_urun)
-        db.session.commit()
+    tip_hatasi = tip_kontrol(veri)
+    if tip_hatasi:
+        return jsonify({"hata": f"{tip_hatasi} alanı yanlış tipte"}), 400
 
-        return jsonify({"mesaj": "Ürün eklendi"}), 201
-
-    except Exception as hata:
-        return jsonify({"hata": str(hata)}), 500
-
+    yeni_urun = urun_ekle(veri["ad"], veri["fiyat"], veri["stok_miktari"], request.kullanici_id)
+    return jsonify({"mesaj": "Ürün eklendi", "urun_id": yeni_urun.id}), 201
 
 @urun_bp.route("/", methods=["GET"])
 def urunleri_listele():
     urunler = Urun.query.all()
-    sonuc = [{"id": u.id, "ad": u.ad, "fiyat": u.fiyat} for u in urunler]
+    sonuc = [u.to_dict() for u in urunler]
     return jsonify(sonuc), 200
 
-
 @urun_bp.route("/<int:urun_id>", methods=["GET"])
-def urun_getir(urun_id):
-    try:
-        urun = Urun.query.get_or_404(urun_id)
-        sonuc = {"id": urun.id, "ad": urun.ad, "fiyat": urun.fiyat}
-        return jsonify(sonuc), 200
-
-    except Exception as hata:
-        return jsonify({"hata": str(hata)}), 500
-
-
+def urun_getir_route(urun_id):
+    urun = urun_getir(urun_id)
+    return jsonify(urun.to_dict()), 200
 
 @urun_bp.route("/<int:urun_id>", methods=["PUT"])
-def urun_guncelle(urun_id):
-    try:
-        veri = request.get_json()
-        urun = Urun.query.get_or_404(urun_id)
+@token_dogrula
+def urun_guncelle_route(urun_id):
+    veri = request.get_json()
+    tip_hatasi = tip_kontrol(veri)
+    if tip_hatasi:
+        return jsonify({"hata": f"{tip_hatasi} alanı yanlış tipte"}), 400
 
-        urun.ad = veri.get("ad", urun.ad)
-        urun.fiyat = veri.get("fiyat", urun.fiyat)
-
-        db.session.commit()
-        return jsonify({"mesaj": "Ürün güncellendi"}), 200
-
-    except Exception as hata:
-        return jsonify({"hata": str(hata)}), 500
-
+    urun = urun_getir(urun_id)
+    urun_guncelle(urun, veri.get("ad"), veri.get("fiyat"), veri.get("stok_miktari"))
+    return jsonify({"mesaj": "Ürün güncellendi"}), 200
 
 @urun_bp.route("/<int:urun_id>", methods=["DELETE"])
-def urun_sil(urun_id):
-    try:
-        urun = Urun.query.get_or_404(urun_id)
-        db.session.delete(urun)
-        db.session.commit()
-        return jsonify({"mesaj": "Ürün silindi"}), 200
-
-    except Exception as hata:
-        return jsonify({"hata": str(hata)}), 500
+@token_dogrula
+def urun_sil_route(urun_id):
+    urun = urun_getir(urun_id)
+    urun_sil(urun)
+    return jsonify({"mesaj": "Ürün silindi"}), 200
