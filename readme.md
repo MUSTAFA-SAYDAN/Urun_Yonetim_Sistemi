@@ -44,7 +44,7 @@ Bu proje, kullanıcıların ürün ekleyip, listeleyebileceği, güncelleyebilec
 - **Gönderilecek JSON:**  
     ```json
     {
-        "kullanici_adi": "ali",
+        "kullanici_adi": "Mustafa",
         "sifre": "1234"
     }
     ```
@@ -56,7 +56,7 @@ Bu proje, kullanıcıların ürün ekleyip, listeleyebileceği, güncelleyebilec
 - **Gönderilecek JSON:**  
     ```json
     {
-        "kullanici_adi": "ali",
+        "kullanici_adi": "Mustafa",
         "sifre": "1234"
     }
     ```
