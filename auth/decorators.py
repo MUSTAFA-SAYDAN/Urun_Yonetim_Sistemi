@@ -2,9 +2,9 @@ from functools import wraps
 from flask import request, jsonify, current_app
 import jwt
 
-def token_dogrula(fonk):
-    @wraps(fonk)
-    def araci_fonksiyon(*args, **kwargs):
+def token_dogrula(f):
+    @wraps(f)
+    def sarici(*args, **kwargs):
         token = None
         if "Authorization" in request.headers:
             bearer = request.headers["Authorization"]
@@ -15,13 +15,13 @@ def token_dogrula(fonk):
             return jsonify({"hata": "Token bulunamadı"}), 401
 
         try:
-            cozulmus_veri = jwt.decode(token, current_app.config["SECRET_KEY"], algorithms=["HS256"])
-            request.kullanici_id = cozulmus_veri["kullanici_id"]
+            data= jwt.decode(token, current_app.config["SECRET_KEY"], algorithms=["HS256"])
+            request.kullanici_id = data["kullanici_id"]
         except jwt.ExpiredSignatureError:
             return jsonify({"hata": "Token süresi dolmuş"}), 401
         except jwt.InvalidTokenError:
             return jsonify({"hata": "Geçersiz token"}), 401
 
-        return fonk(*args, **kwargs)
+        return f(*args, **kwargs)
 
-    return araci_fonksiyon
+    return sarici
