@@ -23,5 +23,5 @@ class Urun(db.Model):
             "ad": self.ad,
             "fiyat": self.fiyat,
             "stok_miktari": self.stok_miktari,
-            "kullanici_id": self.kullanici_id,
+            "kullanici_id": self.kullanici_id
         }
