@@ -34,10 +34,15 @@ def giris():
     kullanici = kullanici_dogrula(veri["kullanici_adi"], veri["sifre"])
     if not kullanici:
         return jsonify({"hata": "Kullanıcı adı veya şifre yanlış"}), 401
+    
+
+     # ✅ datetime → timestamp
+    exp_time = datetime.datetime.utcnow() + datetime.timedelta(hours=3)
+    exp_timestamp = int(exp_time.timestamp())  # 💡 BURASI ÖNEMLİ
 
     token = jwt.encode({
         "kullanici_id": kullanici.id,
-        "son_kullanma": datetime.datetime.utcnow() + datetime.timedelta(hours=3)
+        "exp": exp_time.timestamp()
     }, current_app.config["SECRET_KEY"], algorithm="HS256")
 
     return jsonify({"token": token}), 200
