@@ -1,5 +1,3 @@
-# urun/services.py
-
 from models import Urun
 from extensions import db
 
@@ -19,6 +17,7 @@ def urun_guncelle(urun, ad=None, fiyat=None, stok_miktari=None):
         urun.fiyat = fiyat
     if stok_miktari is not None:
         urun.stok_miktari = stok_miktari
+
     db.session.commit()
     return urun
 

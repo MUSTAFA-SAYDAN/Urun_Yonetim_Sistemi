@@ -1,7 +1,5 @@
-# auth/services.py
-
-from models import Kullanici
 from extensions import db, bcrypt
+from models import Kullanici
 
 def kullanici_kaydet(kullanici_adi, sifre):
     sifre_hash = bcrypt.generate_password_hash(sifre).decode("utf-8")

@@ -12,10 +12,10 @@ def token_dogrula(f):
                 token = bearer.split(" ")[1]
 
         if not token:
-            return jsonify({"hata": "Token bulunamadı"}), 401
+            return jsonify({"hata": "Token bulunamadi"}), 401
 
         try:
-            data= jwt.decode(token, current_app.config["SECRET_KEY"], algorithms=["HS256"])
+            data = jwt.decode(token, current_app.config["SECRET_KEY"], algorithms=["HS256"])
             request.kullanici_id = data["kullanici_id"]
         except jwt.ExpiredSignatureError:
             return jsonify({"hata": "Token süresi dolmuş"}), 401
